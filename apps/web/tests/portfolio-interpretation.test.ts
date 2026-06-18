@@ -54,4 +54,31 @@ describe("PortfolioInterpretationModule", () => {
     expect(action.label).toBe("TRIM_CANDIDATE");
     expect(action.riskFlags).toContain("high_portfolio_concentration");
   });
+
+  it("preserves REVIEW_REQUIRED signals as review-required Portfolio actions", () => {
+    const reviewRequiredDecision: SignalDecision = {
+      ...buyDecision,
+      qualityFlags: ["weak_ai_source_evidence"],
+      tradeTimingPlan: {
+        ...buyDecision.tradeTimingPlan,
+        actionLabel: "REVIEW_REQUIRED",
+      },
+    };
+    const portfolio: Portfolio = {
+      id: "portfolio-1",
+      workspaceId: "workspace-1",
+      type: "personal",
+      name: "Main",
+      holdings: [],
+    };
+
+    const action = interpretForPortfolio({
+      signalDecision: reviewRequiredDecision,
+      portfolio,
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("REVIEW_REQUIRED");
+    expect(action.riskFlags).toContain("weak_ai_source_evidence");
+  });
 });

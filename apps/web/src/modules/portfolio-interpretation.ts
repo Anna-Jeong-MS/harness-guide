@@ -56,6 +56,14 @@ export function interpretForPortfolio(input: {
     };
   }
 
+  if (input.signalDecision.tradeTimingPlan.actionLabel === "REVIEW_REQUIRED") {
+    return {
+      label: "REVIEW_REQUIRED",
+      riskFlags: input.signalDecision.qualityFlags,
+      explanation: "Signal quality requires professional Portfolio review.",
+    };
+  }
+
   return {
     label: "HOLD_AND_MONITOR",
     riskFlags: [],
