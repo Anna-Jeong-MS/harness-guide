@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { SignalDecision } from "../domain/signals";
 
 export type SignalRepository = {
@@ -6,22 +7,7 @@ export type SignalRepository = {
 
 export function createPrismaSignalRepository(client: {
   signal: {
-    create(args: {
-      data: {
-        workspaceId: string;
-        instrumentId: string;
-        finality: string;
-        actionLabel: string;
-        confidence: number;
-        rulesContribution: number;
-        aiContribution: number;
-        aiWeightHaircut: number;
-        qualityFlags: unknown;
-        sourceEvidence: unknown;
-        tradeTimingPlan: unknown;
-        rationale: unknown;
-      };
-    }): Promise<{ id: string }>;
+    create(args: { data: Prisma.SignalUncheckedCreateInput }): PromiseLike<{ id: string }>;
   };
 }): SignalRepository {
   return {
@@ -36,12 +22,16 @@ export function createPrismaSignalRepository(client: {
           rulesContribution: decision.rulesContribution,
           aiContribution: decision.aiContribution,
           aiWeightHaircut: decision.aiWeightHaircut,
-          qualityFlags: decision.qualityFlags,
-          sourceEvidence: decision.sourceEvidence,
-          tradeTimingPlan: decision.tradeTimingPlan,
-          rationale: decision.rationale,
+          qualityFlags: toJson(decision.qualityFlags),
+          sourceEvidence: toJson(decision.sourceEvidence),
+          tradeTimingPlan: toJson(decision.tradeTimingPlan),
+          rationale: toJson(decision.rationale),
         },
       });
     },
   };
+}
+
+function toJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }

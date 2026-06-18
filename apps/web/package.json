@@ -6,7 +6,7 @@
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "dev": "next dev",
-    "build": "next build"
+    "build": "prisma generate && next build"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
