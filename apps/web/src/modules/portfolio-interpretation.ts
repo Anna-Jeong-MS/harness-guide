@@ -23,16 +23,14 @@ export function interpretForPortfolio(input: {
   const currentWeight =
     holding && totalMarketValue > 0 ? holding.marketValue / totalMarketValue : 0;
   const isOverweight = currentWeight > input.maxPositionWeight;
+  const baseRiskFlags = input.signalDecision.qualityFlags;
 
   if (input.signalDecision.tradeTimingPlan.actionLabel === "REVIEW_REQUIRED") {
     return {
       label: "REVIEW_REQUIRED",
       riskFlags: isOverweight
-        ? appendRiskFlag(
-            input.signalDecision.qualityFlags,
-            "high_portfolio_concentration",
-          )
-        : input.signalDecision.qualityFlags,
+        ? appendRiskFlag(baseRiskFlags, "high_portfolio_concentration")
+        : baseRiskFlags,
       explanation: isOverweight
         ? "Signal quality requires professional Portfolio review, and the position is overweight."
         : "Signal quality requires professional Portfolio review.",
@@ -42,7 +40,7 @@ export function interpretForPortfolio(input: {
   if (isOverweight) {
     return {
       label: "TRIM_CANDIDATE",
-      riskFlags: ["high_portfolio_concentration"],
+      riskFlags: appendRiskFlag(baseRiskFlags, "high_portfolio_concentration"),
       explanation:
         "Raw signal is overridden because the Portfolio is already overweight.",
     };
@@ -51,7 +49,7 @@ export function interpretForPortfolio(input: {
   if (input.signalDecision.tradeTimingPlan.actionLabel === "BUY" && holding) {
     return {
       label: "ADD_ON_CANDIDATE",
-      riskFlags: [],
+      riskFlags: baseRiskFlags,
       explanation: "BUY signal applies to an existing position.",
     };
   }
@@ -59,7 +57,7 @@ export function interpretForPortfolio(input: {
   if (input.signalDecision.tradeTimingPlan.actionLabel === "BUY") {
     return {
       label: "NEW_BUY_CANDIDATE",
-      riskFlags: [],
+      riskFlags: baseRiskFlags,
       explanation: "BUY signal applies to a new Portfolio candidate.",
     };
   }
@@ -67,14 +65,14 @@ export function interpretForPortfolio(input: {
   if (input.signalDecision.tradeTimingPlan.actionLabel === "SELL") {
     return {
       label: "EXIT_CANDIDATE",
-      riskFlags: [],
+      riskFlags: baseRiskFlags,
       explanation: "SELL signal indicates an exit review.",
     };
   }
 
   return {
     label: "HOLD_AND_MONITOR",
-    riskFlags: [],
+    riskFlags: baseRiskFlags,
     explanation: "Signal does not require an immediate Portfolio change.",
   };
 }

@@ -23,36 +23,91 @@ const buyDecision: SignalDecision = {
 };
 
 describe("PortfolioInterpretationModule", () => {
-  it("turns a BUY signal into TRIM_CANDIDATE when the holding is overweight", () => {
-    const portfolio: Portfolio = {
-      id: "portfolio-1",
-      workspaceId: "workspace-1",
-      type: "personal",
-      name: "Main",
-      holdings: [
-        {
-          instrumentId: "US:XNAS:AAPL",
-          quantity: 100,
-          averageEntryPrice: 80,
-          marketValue: 60_000,
-        },
-        {
-          instrumentId: "US:XNAS:MSFT",
-          quantity: 100,
-          averageEntryPrice: 200,
-          marketValue: 40_000,
-        },
-      ],
-    };
-
+  it("preserves quality flags for BUY signals on existing positions", () => {
     const action = interpretForPortfolio({
-      signalDecision: buyDecision,
-      portfolio,
+      signalDecision: decisionWith({
+        actionLabel: "BUY",
+        qualityFlags: ["weak_ai_source_evidence"],
+      }),
+      portfolio: portfolioWithAaplHolding(40_000, 60_000),
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("ADD_ON_CANDIDATE");
+    expect(action.riskFlags).toEqual(["weak_ai_source_evidence"]);
+  });
+
+  it("preserves quality flags for BUY signals on new positions", () => {
+    const action = interpretForPortfolio({
+      signalDecision: decisionWith({
+        actionLabel: "BUY",
+        qualityFlags: ["weak_ai_source_evidence"],
+      }),
+      portfolio: portfolioWithAaplHolding(0, 100_000),
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("NEW_BUY_CANDIDATE");
+    expect(action.riskFlags).toEqual(["weak_ai_source_evidence"]);
+  });
+
+  it("preserves quality flags for SELL signals", () => {
+    const action = interpretForPortfolio({
+      signalDecision: decisionWith({
+        actionLabel: "SELL",
+        qualityFlags: ["weak_ai_source_evidence"],
+      }),
+      portfolio: portfolioWithAaplHolding(40_000, 60_000),
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("EXIT_CANDIDATE");
+    expect(action.riskFlags).toEqual(["weak_ai_source_evidence"]);
+  });
+
+  it("preserves quality flags for HOLD signals", () => {
+    const action = interpretForPortfolio({
+      signalDecision: decisionWith({
+        actionLabel: "HOLD",
+        qualityFlags: ["weak_ai_source_evidence"],
+      }),
+      portfolio: portfolioWithAaplHolding(40_000, 60_000),
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("HOLD_AND_MONITOR");
+    expect(action.riskFlags).toEqual(["weak_ai_source_evidence"]);
+  });
+
+  it("preserves quality flags and appends concentration once when overweight", () => {
+    const action = interpretForPortfolio({
+      signalDecision: decisionWith({
+        actionLabel: "BUY",
+        qualityFlags: ["weak_ai_source_evidence"],
+      }),
+      portfolio: portfolioWithAaplHolding(60_000, 40_000),
       maxPositionWeight: 0.5,
     });
 
     expect(action.label).toBe("TRIM_CANDIDATE");
-    expect(action.riskFlags).toContain("high_portfolio_concentration");
+    expect(action.riskFlags).toEqual([
+      "weak_ai_source_evidence",
+      "high_portfolio_concentration",
+    ]);
+  });
+
+  it("does not duplicate concentration flags when already present", () => {
+    const action = interpretForPortfolio({
+      signalDecision: decisionWith({
+        actionLabel: "BUY",
+        qualityFlags: ["high_portfolio_concentration"],
+      }),
+      portfolio: portfolioWithAaplHolding(60_000, 40_000),
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("TRIM_CANDIDATE");
+    expect(action.riskFlags).toEqual(["high_portfolio_concentration"]);
   });
 
   it("preserves REVIEW_REQUIRED signals as review-required Portfolio actions", () => {
@@ -124,3 +179,50 @@ describe("PortfolioInterpretationModule", () => {
     expect(action.riskFlags).toContain("conflicting_news_or_disclosures");
   });
 });
+
+function decisionWith({
+  actionLabel,
+  qualityFlags,
+}: {
+  actionLabel: SignalDecision["tradeTimingPlan"]["actionLabel"];
+  qualityFlags: SignalDecision["qualityFlags"];
+}): SignalDecision {
+  return {
+    ...buyDecision,
+    qualityFlags,
+    tradeTimingPlan: {
+      ...buyDecision.tradeTimingPlan,
+      actionLabel,
+    },
+  };
+}
+
+function portfolioWithAaplHolding(
+  aaplMarketValue: number,
+  msftMarketValue: number,
+): Portfolio {
+  return {
+    id: "portfolio-1",
+    workspaceId: "workspace-1",
+    type: "personal",
+    name: "Main",
+    holdings: [
+      ...(aaplMarketValue > 0
+        ? [
+            {
+              instrumentId: "US:XNAS:AAPL" as const,
+              quantity: 100,
+              averageEntryPrice: 80,
+              marketValue: aaplMarketValue,
+            },
+          ]
+        : []),
+      {
+        instrumentId: "US:XNAS:MSFT",
+        quantity: 100,
+        averageEntryPrice: 200,
+        marketValue: msftMarketValue,
+      },
+    ],
+  };
+}
