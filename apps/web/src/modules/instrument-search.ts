@@ -161,7 +161,7 @@ function collectMatchReasons(
       intent.ambiguity === "lookup_first" &&
       item.aliases.some((alias) => intent.normalizedQuery.includes(alias.toLowerCase()))
     ) {
-      reasons.add("theme_match");
+      reasons.add("company_alias_match");
     }
     if (intent.themes.some((theme) => item.themes.includes(theme))) {
       reasons.add("theme_match");
@@ -175,9 +175,6 @@ function collectMatchReasons(
     if (intent.portfolioScope && portfolioAvailable && item.instrumentId === "KR:XKRX:005930") {
       reasons.add("portfolio_risk_match");
     }
-    if (intent.portfolioScope && !portfolioAvailable && item.instrumentId === "KR:XKRX:005930") {
-      reasons.add("theme_match");
-    }
   }
   return Array.from(reasons);
 }
@@ -186,7 +183,13 @@ function buildScreeningEvidence(
   item: InstrumentCatalogEntry,
   intent: SearchIntent,
 ): ScreeningEvidence {
+  const matchedAliases = item.aliases.filter((alias) => intent.normalizedQuery.includes(alias.toLowerCase()));
+  const companyFamilyCriteria = matchedAliases.some((alias) => ["samsung", "삼성"].includes(alias.toLowerCase()))
+    ? ["company_family:samsung"]
+    : [];
   const structuredCriteria = [
+    ...matchedAliases.map((alias) => `alias:${alias}`),
+    ...companyFamilyCriteria,
     ...intent.themes.map((theme) => `theme:${theme}`),
     ...intent.actionLabels.map((label) => `action:${label}`),
     ...(intent.market ? [`market:${intent.market}`] : []),

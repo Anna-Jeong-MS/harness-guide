@@ -29,6 +29,31 @@ describe("Instrument search", () => {
     expect(result.relatedScreenCandidates.map((candidate) => candidate.instrumentId)).toContain("KR:XKRX:005930");
   });
 
+  it("explains ambiguous related Investment Idea Screen candidates with weak structured Screening Evidence", () => {
+    const result = searchInstruments("삼성");
+
+    expect(result.relatedScreenCandidates.length).toBeGreaterThan(0);
+    expect(result.relatedScreenCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          instrumentId: "KR:XKRX:005930",
+          primaryMode: "investment_idea_screen",
+          screeningEvidence: expect.objectContaining({
+            quality: "weak",
+            structuredCriteria: expect.arrayContaining(["alias:삼성", "company_family:samsung"]),
+            sources: [],
+            weaknessReason: "Matched by structured criteria without enough cited source material.",
+          }),
+        }),
+      ]),
+    );
+    expect(
+      result.relatedScreenCandidates.every(
+        (candidate) => (candidate.screeningEvidence?.structuredCriteria.length ?? 0) > 0,
+      ),
+    ).toBe(true);
+  });
+
   it("requires structured criteria and cited evidence for Investment Idea Screen matches", () => {
     const result = searchInstruments("US AI infrastructure BUY candidates");
     const nvidia = result.primaryCandidates[0];
@@ -63,7 +88,25 @@ describe("Instrument search", () => {
       available: false,
       message: "Portfolio unavailable; portfolio conditions were not included in ranking.",
     });
-    expect(result.primaryCandidates.length).toBeGreaterThan(0);
+    expect(result.primaryCandidates).toEqual([]);
+    expect(result.relatedScreenCandidates).toEqual([]);
+    expect(result.noMatch?.suggestedPrompts).toContain("Try a portfolio query after importing or selecting a Portfolio.");
+  });
+
+  it("excludes unavailable Portfolio conditions from candidate reasons while keeping non-portfolio screen criteria", () => {
+    const result = searchInstruments("내 포트폴리오에서 US AI infrastructure BUY candidates", {
+      portfolioAvailable: false,
+    });
+
+    expect(result.primaryCandidates.map((candidate) => candidate.instrumentId)).toContain("US:XNAS:NVDA");
+    expect(result.primaryCandidates).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          instrumentId: "KR:XKRX:005930",
+        }),
+      ]),
+    );
+    expect(result.primaryCandidates.flatMap((candidate) => candidate.matchReasons)).not.toContain("portfolio_risk_match");
   });
 
   it("does not duplicate primary Investment Idea Screen candidates as related candidates", () => {
