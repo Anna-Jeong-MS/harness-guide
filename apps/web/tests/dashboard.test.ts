@@ -62,4 +62,17 @@ describe("ProfessionalWorkspace dashboard", () => {
     expect(html).toContain("AI Weight Haircut: 6%");
     expect(html).toContain("action-badge action-buy");
   });
+
+  it("renders structured Screening Evidence criteria and cited sources on result cards", () => {
+    const result = searchInstruments("US AI infrastructure BUY candidates");
+    const html = renderDashboardSummary({
+      query: "US AI infrastructure BUY candidates",
+      searchResult: result,
+      searchCards: assembleSearchResultCards(result),
+    });
+
+    expect(html).toContain("Criteria: theme:ai_infrastructure, action:BUY, market:US");
+    expect(html).toContain("Source: AI infrastructure demand update");
+    expect(html).toContain("https://example.com/ai-infrastructure-demand");
+  });
 });

@@ -1,7 +1,7 @@
 import type { DataFinality, InstrumentId, QualityFlag } from "../domain/market";
 import type { PortfolioActionLabel } from "../domain/portfolio";
 import type { ActionLabel, TradeTimingPlan } from "../domain/signals";
-import type { InstrumentSearchCandidate, InstrumentSearchResult } from "./instrument-search";
+import type { InstrumentSearchCandidate, InstrumentSearchResult, ScreeningEvidence } from "./instrument-search";
 import type { SearchMode } from "./search-intent";
 
 export type SearchResultCard = {
@@ -16,6 +16,7 @@ export type SearchResultCard = {
   aiWeightHaircut: number;
   portfolioAction: PortfolioActionLabel;
   screeningEvidenceQuality?: "strong" | "weak";
+  screeningEvidence?: ScreeningEvidence;
   qualityFlags: QualityFlag[];
   rankingBreakdown: string[];
   portfolioStateMessage?: string;
@@ -27,6 +28,7 @@ type SignalFixture = Omit<
   | "displayName"
   | "primaryMode"
   | "screeningEvidenceQuality"
+  | "screeningEvidence"
   | "qualityFlags"
   | "rankingBreakdown"
   | "portfolioStateMessage"
@@ -48,40 +50,78 @@ export function assembleSearchResultCards(result: InstrumentSearchResult): Searc
         return [];
       }
       const screeningEvidenceQuality = candidate.screeningEvidence?.quality;
+      const scores = rankingScores(candidate, signalFixture.confidence);
       return [{
-        ...signalFixture,
-        displayName: candidate.displayName,
-        primaryMode: candidate.primaryMode,
-        ...(screeningEvidenceQuality ? { screeningEvidenceQuality } : {}),
-        qualityFlags: candidate.qualityFlags,
-        rankingBreakdown: rankingBreakdown(signalFixture.confidence, screeningEvidenceQuality, candidate.qualityFlags),
-        ...(!result.portfolioState.available && result.portfolioState.message
-          ? { portfolioStateMessage: result.portfolioState.message }
-          : {}),
-        detailHref: `/signals/${encodeURIComponent(candidate.instrumentId)}`,
+        card: {
+          ...signalFixture,
+          displayName: candidate.displayName,
+          primaryMode: candidate.primaryMode,
+          ...(screeningEvidenceQuality ? { screeningEvidenceQuality } : {}),
+          ...(candidate.screeningEvidence ? { screeningEvidence: candidate.screeningEvidence } : {}),
+          qualityFlags: candidate.qualityFlags,
+          rankingBreakdown: rankingBreakdown(scores),
+          ...(!result.portfolioState.available && result.portfolioState.message
+            ? { portfolioStateMessage: result.portfolioState.message }
+            : {}),
+          detailHref: `/signals/${encodeURIComponent(candidate.instrumentId)}`,
+        },
+        scores,
       }];
     })
-    .sort((left, right) => rank(right) - rank(left));
+    .sort((left, right) => compareRankingScores(right.scores, left.scores))
+    .map(({ card }) => card);
 }
 
-function rankingBreakdown(
-  confidence: number,
-  screeningEvidenceQuality: "strong" | "weak" | undefined,
-  qualityFlags: QualityFlag[],
-): string[] {
+type RankingScores = {
+  searchIntentFit: number;
+  confirmedSignalConfidence: number;
+  screeningEvidenceQuality: number;
+  portfolioRelevance: number;
+  riskPenalty: number;
+};
+
+function rankingBreakdown(scores: RankingScores): string[] {
   return [
-    "Search Intent fit: 1",
-    `Confirmed Signal confidence: ${confidence}`,
-    `Screening Evidence quality: ${screeningEvidenceQuality === "strong" ? 1 : screeningEvidenceQuality === "weak" ? 0.35 : 0}`,
-    "Portfolio relevance: 0",
-    `Risk penalty: ${qualityFlags.includes("high_volatility") ? -0.2 : 0}`,
+    `Search Intent fit: ${scores.searchIntentFit}`,
+    `Confirmed Signal confidence: ${scores.confirmedSignalConfidence}`,
+    `Screening Evidence quality: ${scores.screeningEvidenceQuality}`,
+    `Portfolio relevance: ${scores.portfolioRelevance}`,
+    `Risk penalty: ${scores.riskPenalty}`,
   ];
 }
 
-function rank(card: SearchResultCard): number {
-  const evidence = card.screeningEvidenceQuality === "strong" ? 1 : card.screeningEvidenceQuality === "weak" ? 0.35 : 0;
-  const riskPenalty = card.qualityFlags.includes("high_volatility") ? -0.2 : 0;
-  return 1 * 10 + card.confidence + evidence + riskPenalty;
+function rankingScores(candidate: InstrumentSearchCandidate, confidence: number): RankingScores {
+  return {
+    searchIntentFit: Math.min(1, candidate.matchReasons.length / 2),
+    confirmedSignalConfidence: confidence,
+    screeningEvidenceQuality: screeningEvidenceScore(candidate.screeningEvidence),
+    portfolioRelevance: candidate.matchReasons.includes("portfolio_risk_match") ? 1 : 0,
+    riskPenalty: candidate.qualityFlags.includes("high_volatility") ? -0.2 : 0,
+  };
+}
+
+function screeningEvidenceScore(screeningEvidence: ScreeningEvidence | undefined): number {
+  if (!screeningEvidence) {
+    return 0;
+  }
+  if (
+    screeningEvidence.quality === "strong" &&
+    screeningEvidence.structuredCriteria.length > 0 &&
+    screeningEvidence.sources.length > 0
+  ) {
+    return 1;
+  }
+  return 0.35;
+}
+
+function compareRankingScores(left: RankingScores, right: RankingScores): number {
+  return (
+    left.searchIntentFit - right.searchIntentFit ||
+    left.confirmedSignalConfidence - right.confirmedSignalConfidence ||
+    left.screeningEvidenceQuality - right.screeningEvidenceQuality ||
+    left.portfolioRelevance - right.portfolioRelevance ||
+    left.riskPenalty - right.riskPenalty
+  );
 }
 
 function signal(

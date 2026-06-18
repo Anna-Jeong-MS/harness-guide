@@ -24,6 +24,64 @@ describe("Search Result Assembler", () => {
     ]);
   });
 
+  it("carries structured Screening Evidence criteria and cited EvidenceSource material onto cards", () => {
+    const cards = assembleSearchResultCards(searchInstruments("US AI infrastructure BUY candidates"));
+
+    expect(cards[0].screeningEvidence).toMatchObject({
+      quality: "strong",
+      structuredCriteria: ["theme:ai_infrastructure", "action:BUY", "market:US"],
+      sources: [
+        {
+          sourceType: "news",
+          title: "AI infrastructure demand update",
+          url: "https://example.com/ai-infrastructure-demand",
+          finality: "confirmed",
+        },
+      ],
+    });
+  });
+
+  it("uses candidate match data for Search Intent fit and Portfolio relevance when ranking", () => {
+    const result: InstrumentSearchResult = {
+      intent: searchInstruments("내 포트폴리오에서 손절 가까운 종목").intent,
+      primaryCandidates: [
+        {
+          instrumentId: "KR:XKRX:005930",
+          displayName: "Samsung Electronics without portfolio match",
+          market: "KR",
+          ticker: "005930",
+          primaryMode: "investment_idea_screen",
+          themes: [],
+          sectors: [],
+          matchReasons: ["company_alias_match", "theme_match"],
+          qualityFlags: ["confirmed_end_of_day_data"],
+        },
+        {
+          instrumentId: "KR:XKRX:005930",
+          displayName: "Samsung Electronics portfolio match",
+          market: "KR",
+          ticker: "005930",
+          primaryMode: "investment_idea_screen",
+          themes: [],
+          sectors: [],
+          matchReasons: ["company_alias_match", "portfolio_risk_match"],
+          qualityFlags: ["confirmed_end_of_day_data"],
+        },
+      ],
+      relatedScreenCandidates: [],
+      portfolioState: { available: true },
+    };
+
+    const cards = assembleSearchResultCards(result);
+
+    expect(cards[0].instrumentId).toBe("KR:XKRX:005930");
+    expect(cards[0].displayName).toBe("Samsung Electronics portfolio match");
+    expect(cards[0].rankingBreakdown).toContain("Search Intent fit: 1");
+    expect(cards[0].rankingBreakdown).toContain("Portfolio relevance: 1");
+    expect(cards[1].rankingBreakdown).toContain("Search Intent fit: 1");
+    expect(cards[1].rankingBreakdown).toContain("Portfolio relevance: 0");
+  });
+
   it("shows portfolio unavailable state without silently applying portfolio ranking", () => {
     const cards = assembleSearchResultCards(searchInstruments("삼성", { portfolioAvailable: false }));
 

@@ -80,12 +80,29 @@ function renderCard(card: SearchResultCard): string {
     "<p>Decision-support only. Review Required conditions and conflicting evidence must be checked in detail.</p>",
     `<p>Entry ${formatPriceRange(card.tradeTimingPlan.entryZone)} · Stop ${formatPrice(card.tradeTimingPlan.stopLevel)} · Target ${formatPriceRange(card.tradeTimingPlan.targetZone)}</p>`,
     `<p>Screening Evidence: ${escapeHtml(card.screeningEvidenceQuality ? card.screeningEvidenceQuality : "not applicable")}</p>`,
+    ...renderScreeningEvidenceDetails(card),
     `<p>AI contribution: ${formatPercent(card.aiContribution)} · AI Weight Haircut: ${formatPercent(card.aiWeightHaircut)}</p>`,
     ...card.rankingBreakdown.map((line) => `<p>${escapeHtml(line)}</p>`),
     card.portfolioStateMessage ? `<p>${escapeHtml(card.portfolioStateMessage)}</p>` : "",
     `<a href="${escapeHtml(card.detailHref)}">Open research detail</a>`,
     "</article>",
   ].join("");
+}
+
+function renderScreeningEvidenceDetails(card: SearchResultCard): string[] {
+  if (!card.screeningEvidence) {
+    return [];
+  }
+  return [
+    card.screeningEvidence.structuredCriteria.length > 0
+      ? `<p>Criteria: ${escapeHtml(card.screeningEvidence.structuredCriteria.join(", "))}</p>`
+      : "",
+    ...card.screeningEvidence.sources.map(
+      (source) =>
+        `<p>Source: ${escapeHtml(source.title)} · ${escapeHtml(source.sourceType)} · ${escapeHtml(source.finality)} · <a href="${escapeHtml(source.url)}">${escapeHtml(source.url)}</a></p>`,
+    ),
+    card.screeningEvidence.weaknessReason ? `<p>${escapeHtml(card.screeningEvidence.weaknessReason)}</p>` : "",
+  ];
 }
 
 function escapeHtml(value: string): string {
