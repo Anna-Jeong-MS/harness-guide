@@ -39,6 +39,16 @@ Two alternatives were rejected:
 
 ## User Experience
 
+The interface should use a Professional Research Terminal tone: dark, information-dense, precise, and calm. It should feel closer to professional market software than a generic SaaS dashboard or consumer finance app. Visual polish must support fast expert scanning rather than decoration.
+
+The implementation should use `app/globals.css` with semantic classes for this slice. The app does not need a Tailwind or full design-system migration to deliver the MVP, but class names should reflect product concepts such as command bar, search mode, result card, timing rail, report tabs, evidence stack, and quality state.
+
+Numerical formatting must be consistent across dashboard cards and detail panels. Confidence and AI contribution appear as percentages, price levels use localized numbers without forcing a currency symbol, and risk appears as Low, Moderate, or High with the supporting numeric value available nearby.
+
+The UX must be fully responsive, not desktop-only. Desktop uses the dense Professional Research Terminal layout. Tablet compresses the candidate grid and report tabs. Mobile uses a first-class stacked flow: search command area, mode chips, result cards, sticky compact action summary on detail pages, horizontally scrollable chart panels when needed, and touch-sized tab controls.
+
+On mobile detail pages, the compact Signal Brief / Trade Timing summary remains sticky near the top. Research Report Panels use horizontal segmented tabs, and only the selected panel is shown at a time to avoid an unbounded scroll.
+
 ### Natural Language Search
 
 The dashboard exposes two equal search modes:
@@ -47,6 +57,8 @@ The dashboard exposes two equal search modes:
 - Investment Idea Screen for finding candidates from market, sector, theme, signal, risk, or portfolio conditions.
 
 The default interaction is lookup-first. If a query such as "Samsung" can be interpreted both as a specific stock lookup and as a broader investment idea, the interface prioritizes Stock Lookup results and shows related Investment Idea Screen interpretations on the same page. The user should not be forced into a mode selector before seeing useful results.
+
+The dashboard layout uses a top search command area followed by a responsive candidate card grid. The search area owns the query input, mode chips, prompt examples, and visible Search Intent interpretation. The card grid owns comparison: Action Label, confidence, Trade Timing Plan levels, Screening Evidence, quality flags, and a clear route into the Professional Research Terminal detail page.
 
 The dashboard gains a prominent search bar with professional prompt examples:
 
@@ -75,10 +87,11 @@ Results are ranked cards. The Result Ranking Policy is:
 
 This prevents high-confidence but off-topic BUY candidates from outranking instruments that better match the user's stated intent. Each card shows:
 
+- Top priority: Action Label, confidence, entry zone, stop level, target zone, and time horizon.
 - Instrument display name and canonical InstrumentId.
 - Match reason, such as exact ticker match, company alias match, theme match, signal filter match, or portfolio-risk match.
 - Screening Evidence for Investment Idea Screen matches: structured criteria, cited source material, and evidence quality.
-- Action Label, confidence, finality, entry zone, stop level, target zone, and time horizon.
+- Finality.
 - Portfolio action when relevant.
 - AI contribution and any AI Weight Haircut.
 - Data quality flags and last refreshed time.
@@ -90,7 +103,7 @@ The signal detail page becomes a research terminal for one instrument.
 
 The page is composed of Research Report Panels. These are internal analytical panels, not externally shareable Client Reports. Required panels:
 
-The layout keeps Signal Brief and Trade Timing visible as the fixed summary area at the top of the page. The remaining panels sit in a tabbed report area so the page feels like a professional research workspace without forcing every report onto one long scroll.
+The layout keeps Signal Brief and Trade Timing visible as the fixed summary area at the top of the page. The fixed summary starts with an executive command bar containing instrument identity, Action Label, confidence, finality, Review Required state, and Research Note / Client Report actions. Below the command bar, the page prioritizes the Trade Timing Plan and the primary price chart before the tabbed report area. The remaining panels sit in tabs so the page feels like a professional research workspace without forcing every report onto one long scroll.
 
 1. Signal Brief Panel: compact Action Label, confidence, finality, time horizon, data quality, and one-paragraph rationale.
 2. Trade Timing Panel: entry zone, stop level, target zone, risk/reward, invalidation conditions, and monitoring checklist.
@@ -104,6 +117,8 @@ The layout keeps Signal Brief and Trade Timing visible as the fixed summary area
 10. Research and Report Actions Panel: generate or update an editable Research Note and optionally draft a Client Report after professional review.
 
 Compact dashboard labels and the top Signal Brief may use strong BUY, HOLD, or SELL Action Labels. The label must appear with decision-support-only copy, Review Required conditions, supporting evidence, and conflicting or risk evidence so the product does not appear to make autonomous investment decisions.
+
+Action Label styling should use low-saturation semantic badges with borders rather than loud primary-color pills. BUY uses muted green, HOLD uses amber or neutral, SELL uses muted red, and REVIEW_REQUIRED uses violet or gray. The badge should communicate status without making the product feel gamified or like an order-entry interface.
 
 ## Visualization Design
 

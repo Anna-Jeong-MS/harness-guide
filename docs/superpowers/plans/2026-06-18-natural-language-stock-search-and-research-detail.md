@@ -6,11 +6,11 @@
 
 **Architecture:** Add a deterministic Search Intent seam that supports equal Stock Lookup and Investment Idea Screen modes. Assemble ranked search cards with Screening Evidence, then render a signal detail page with a fixed Signal Brief and Trade Timing summary plus tabbed Research Report Panels. Use Recharts from the start, but keep chart components fed by typed view models so signal calculation and visualization stay separate.
 
-**Tech Stack:** Next.js 15, React 19, TypeScript 5.6, Vitest 2.1, Recharts, existing HTML-string rendering helpers, existing domain types in `apps/web/src/domain/`.
+**Tech Stack:** Next.js 15, React 19, TypeScript 5.6, Vitest 2.1, Recharts, semantic CSS in `app/globals.css`, existing HTML-string rendering helpers, existing domain types in `apps/web/src/domain/`.
 
 ## Global Constraints
 
-- Use canonical terms from `CONTEXT.md`: Investment Professional, Research Note, Client Report, Research Report Panel, Trade Timing Plan, Strategy Profile, Market Data Provider, Provisional Signal, Confirmed Signal, Strategy Backtest, Workspace, Portfolio, Alert Event, Action Label, InstrumentId, Stock Lookup, Investment Idea Screen, Screening Evidence, Search Intent, Result Ranking Policy, Broker Connection, AI Weight Haircut, Audit Log.
+- Use canonical terms from `CONTEXT.md`: Investment Professional, Research Note, Client Report, Research Report Panel, Trade Timing Plan, Strategy Profile, Market Data Provider, Provisional Signal, Confirmed Signal, Strategy Backtest, Workspace, Professional Research Terminal, Portfolio, Alert Event, Action Label, InstrumentId, Stock Lookup, Investment Idea Screen, Screening Evidence, Search Intent, Result Ranking Policy, Broker Connection, AI Weight Haircut, Audit Log.
 - The MVP supports Korean and US equities.
 - The trading horizon is swing trading over days to weeks.
 - The product is a professional decision-support system, not an automatic investment adviser or auto-trading system.
@@ -23,6 +23,13 @@
 - Compact dashboard surfaces and the Signal Brief may use strong BUY, HOLD, and SELL Action Labels only with decision-support copy, Review Required conditions, and conflicting or risk evidence.
 - If Portfolio data is unavailable, search still runs, Portfolio Impact Report Panel is unavailable, and portfolio conditions are marked as excluded from ranking.
 - Client Reports can be drafted only from approved Research Notes and portfolio context.
+- The UX must use a dark Professional Research Terminal tone: dense, calm, precise, and closer to professional market software than generic SaaS.
+- Use `apps/web/app/globals.css` and semantic classes for this slice; do not introduce Tailwind in this plan.
+- Dashboard layout is a top search command area followed by a responsive candidate card grid.
+- Detail layout starts with an executive command bar, then Trade Timing Plan and primary chart, then tabbed Research Report Panels.
+- Mobile is first-class: sticky compact detail summary, horizontal segmented panel tabs, touch-sized controls, and horizontally scrollable chart panels when needed.
+- Action Label badges use low-saturation semantic colors with borders: BUY muted green, HOLD amber or neutral, SELL muted red, REVIEW_REQUIRED violet or gray.
+- Use shared formatting helpers so confidence and AI contribution render as percentages, price levels render as localized numbers without forced currency symbols, and risk renders as Low, Moderate, or High with numeric support.
 
 ---
 
@@ -30,6 +37,14 @@
 
 - Modify: `apps/web/package.json`
   - Adds the Recharts dependency.
+- Create: `apps/web/app/globals.css`
+  - Defines the Professional Research Terminal visual system, semantic classes, responsive grid, mobile sticky summary, segmented tabs, and Action Label badges.
+- Modify: `apps/web/app/layout.tsx`
+  - Imports `globals.css` and sets product metadata.
+- Create: `apps/web/src/modules/formatters.ts`
+  - Owns shared percentage, price level, range, and risk formatting.
+- Create: `apps/web/tests/formatters.test.ts`
+  - Tests numerical formatting used by dashboard and detail renderers.
 - Create: `apps/web/src/modules/search-intent.ts`
   - Owns `SearchIntent`, `SearchMode`, parser output, ambiguity, and no-match guidance.
 - Create: `apps/web/src/modules/instrument-search.ts`
@@ -65,14 +80,24 @@
 
 ---
 
-### Task 1: Add Recharts and test setup
+### Task 1: Add Recharts and Professional Research Terminal foundation
 
 **Files:**
 - Modify: `apps/web/package.json`
 - Modify: `package-lock.json`
+- Create: `apps/web/app/globals.css`
+- Modify: `apps/web/app/layout.tsx`
+- Create: `apps/web/src/modules/formatters.ts`
+- Create: `apps/web/tests/formatters.test.ts`
 
 **Interfaces:**
 - Produces: installed `recharts` package for `apps/web/src/modules/research-charts.tsx`.
+- Produces:
+  - `function formatPercent(value: number): string`
+  - `function formatPrice(value: number): string`
+  - `function formatPriceRange(range: { low: number; high: number }): string`
+  - `function formatRisk(value: number): { label: "Low" | "Moderate" | "High"; display: string }`
+- Produces: global semantic CSS classes used by later dashboard and detail renderers.
 
 - [ ] **Step 1: Add Recharts with npm**
 
@@ -84,21 +109,304 @@ npm --prefix apps/web install recharts
 
 Expected: `apps/web/package.json` includes `"recharts"` in `dependencies`, and `package-lock.json` is updated.
 
-- [ ] **Step 2: Run current web tests**
+- [ ] **Step 2: Write failing formatter tests**
+
+Create `apps/web/tests/formatters.test.ts`:
+
+```typescript
+import { describe, expect, it } from "vitest";
+import { formatPercent, formatPrice, formatPriceRange, formatRisk } from "../src/modules/formatters";
+
+describe("professional numeric formatters", () => {
+  it("formats confidence and AI contribution as percentages", () => {
+    expect(formatPercent(0.82)).toBe("82%");
+    expect(formatPercent(0.405)).toBe("41%");
+  });
+
+  it("formats price levels as localized numbers without forced currency symbols", () => {
+    expect(formatPrice(118)).toBe("118");
+    expect(formatPrice(71000)).toBe("71,000");
+    expect(formatPriceRange({ low: 118, high: 124 })).toBe("118 - 124");
+  });
+
+  it("formats risk with professional labels and numeric support", () => {
+    expect(formatRisk(0.2)).toEqual({ label: "Low", display: "Low (20%)" });
+    expect(formatRisk(0.5)).toEqual({ label: "Moderate", display: "Moderate (50%)" });
+    expect(formatRisk(0.8)).toEqual({ label: "High", display: "High (80%)" });
+  });
+});
+```
+
+- [ ] **Step 3: Run formatter tests to verify they fail**
 
 Run:
 
 ```bash
+npm --prefix apps/web test -- --run tests/formatters.test.ts
+```
+
+Expected: FAIL with a module resolution error for `../src/modules/formatters`.
+
+- [ ] **Step 4: Implement formatters**
+
+Create `apps/web/src/modules/formatters.ts`:
+
+```typescript
+export function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+export function formatPrice(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: value >= 1000 ? 0 : 2,
+  }).format(value);
+}
+
+export function formatPriceRange(range: { low: number; high: number }): string {
+  return `${formatPrice(range.low)} - ${formatPrice(range.high)}`;
+}
+
+export function formatRisk(value: number): { label: "Low" | "Moderate" | "High"; display: string } {
+  const label = value < 0.34 ? "Low" : value < 0.67 ? "Moderate" : "High";
+  return {
+    label,
+    display: `${label} (${formatPercent(value)})`,
+  };
+}
+```
+
+- [ ] **Step 5: Add the Professional Research Terminal CSS**
+
+Create `apps/web/app/globals.css`:
+
+```css
+:root {
+  color-scheme: dark;
+  --surface-0: #070a0f;
+  --surface-1: #0d121a;
+  --surface-2: #131b26;
+  --surface-3: #1c2633;
+  --text-0: #f4f7fb;
+  --text-1: #c8d2df;
+  --text-2: #7f8da1;
+  --line: rgba(148, 163, 184, 0.22);
+  --accent: #7dd3fc;
+  --buy: #62d394;
+  --hold: #e4b557;
+  --sell: #ef7878;
+  --review: #a78bfa;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.14), transparent 34rem),
+    linear-gradient(135deg, var(--surface-0), #0a0f17 52%, #05070b);
+  color: var(--text-0);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+.workspace-shell,
+.research-detail {
+  width: min(1440px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 32px 0 56px;
+}
+
+.terminal-header,
+.search-command,
+.fixed-summary,
+.report-tabs,
+.search-result-card,
+.report-panel {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(19, 27, 38, 0.94), rgba(13, 18, 26, 0.94));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.terminal-header,
+.search-command,
+.fixed-summary {
+  border-radius: 28px;
+  padding: 24px;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.search-result-card,
+.report-panel {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.command-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7, 10, 15, 0.86);
+  padding: 12px 0;
+  backdrop-filter: blur(16px);
+}
+
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.action-buy {
+  color: var(--buy);
+  background: rgba(98, 211, 148, 0.1);
+}
+
+.action-hold {
+  color: var(--hold);
+  background: rgba(228, 181, 87, 0.1);
+}
+
+.action-sell {
+  color: var(--sell);
+  background: rgba(239, 120, 120, 0.1);
+}
+
+.action-review {
+  color: var(--review);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.mode-chips,
+.segmented-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mode-chip,
+.tab-chip,
+.quality-state {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-1);
+  padding: 7px 11px;
+}
+
+.chart-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+@media (max-width: 720px) {
+  .workspace-shell,
+  .research-detail {
+    width: min(100vw - 20px, 720px);
+    padding: 16px 0 32px;
+  }
+
+  .terminal-header,
+  .search-command,
+  .fixed-summary {
+    border-radius: 20px;
+    padding: 18px;
+  }
+
+  .command-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .candidate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .segmented-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-chip {
+    min-height: 44px;
+    white-space: nowrap;
+  }
+}
+```
+
+- [ ] **Step 6: Import global CSS in the root layout**
+
+Replace `apps/web/app/layout.tsx` with:
+
+```tsx
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Professional Stock Signal Workspace",
+  description: "Professional Research Terminal for stock signal review.",
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+- [ ] **Step 7: Verify responsive UX classes exist**
+
+Run:
+
+```bash
+rg "@media \\(max-width: 720px\\)|candidate-grid|command-bar|segmented-tabs|action-badge" apps/web/app/globals.css
+```
+
+Expected: output includes all five patterns, proving the Professional Research Terminal, responsive grid, mobile segmented tabs, command bar, and Action Label badge styles are present.
+
+- [ ] **Step 8: Run formatter tests and current web tests**
+
+Run:
+
+```bash
+npm --prefix apps/web test -- --run tests/formatters.test.ts
 npm --prefix apps/web test -- --run
 ```
 
 Expected: PASS. If existing tests fail before feature work, stop and report the baseline failure.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add apps/web/package.json package-lock.json
-git commit -m "chore: add recharts for research visualizations"
+git add apps/web/package.json package-lock.json apps/web/app/globals.css apps/web/app/layout.tsx apps/web/src/modules/formatters.ts apps/web/tests/formatters.test.ts
+git commit -m "feat: add professional research terminal foundation"
 ```
 
 ---
@@ -817,6 +1125,8 @@ describe("ProfessionalWorkspace dashboard", () => {
 
     expect(html).toContain("Stock Lookup");
     expect(html).toContain("Investment Idea Screen");
+    expect(html).toContain("search-command");
+    expect(html).toContain("candidate-grid");
     expect(html).toContain("Lookup-first results");
     expect(html).toContain("Related Investment Idea Screens");
     expect(html).toContain("Samsung Electronics");
@@ -834,7 +1144,9 @@ describe("ProfessionalWorkspace dashboard", () => {
     expect(html).toContain("Screening Evidence: strong");
     expect(html).toContain("Search Intent fit: 1");
     expect(html).toContain("Decision-support only");
-    expect(html).toContain("AI Weight Haircut: 0.06");
+    expect(html).toContain("Confidence 88%");
+    expect(html).toContain("AI Weight Haircut: 6%");
+    expect(html).toContain("action-badge action-buy");
   });
 });
 ```
@@ -964,6 +1276,7 @@ Replace `apps/web/src/modules/dashboard-summary.ts` with:
 import { describeSearchIntent } from "./search-intent";
 import type { InstrumentSearchResult } from "./instrument-search";
 import type { SearchResultCard } from "./search-result-assembler";
+import { formatPercent, formatPrice, formatPriceRange } from "./formatters";
 
 export type DashboardSummaryInput = {
   query: string;
@@ -974,7 +1287,7 @@ export type DashboardSummaryInput = {
 export function renderDashboardSummary(input: DashboardSummaryInput): string {
   return [
     '<section class="workspace-shell">',
-    "<header>",
+    '<header class="terminal-header">',
     "<p>Professional Stock Signal Workspace</p>",
     "<h1>Natural language stock search</h1>",
     "<p>Decision-support only. Professional review required before external use.</p>",
@@ -989,14 +1302,16 @@ export function renderDashboardSummary(input: DashboardSummaryInput): string {
 function renderSearchForm(query: string): string {
   return [
     '<form method="get" action="/">',
-    "<fieldset>",
+    '<section class="search-command">',
+    '<fieldset class="mode-chips">',
     "<legend>Search modes</legend>",
-    "<span>Stock Lookup</span>",
-    "<span>Investment Idea Screen</span>",
+    '<span class="mode-chip">Stock Lookup</span>',
+    '<span class="mode-chip">Investment Idea Screen</span>',
     "</fieldset>",
     '<label for="q">Natural language query</label>',
     `<input id="q" name="q" value="${escapeHtml(query)}" placeholder="US AI infrastructure BUY candidates" />`,
     '<button type="submit">Search</button>',
+    "</section>",
     "</form>",
   ].join("");
 }
@@ -1023,18 +1338,19 @@ function renderCards(result: InstrumentSearchResult, cards: SearchResultCard[]):
     ].join("");
   }
 
-  return ["<section><h2>Ranked candidates</h2>", ...cards.map(renderCard), "</section>"].join("");
+  return ['<section><h2>Ranked candidates</h2><div class="candidate-grid">', ...cards.map(renderCard), "</div></section>"].join("");
 }
 
 function renderCard(card: SearchResultCard): string {
+  const actionClass = card.actionLabel === "BUY" ? "action-buy" : card.actionLabel === "HOLD" ? "action-hold" : card.actionLabel === "SELL" ? "action-sell" : "action-review";
   return [
     '<article class="search-result-card">',
     `<h3>${escapeHtml(card.displayName)} <span>${escapeHtml(card.instrumentId)}</span></h3>`,
-    `<p><strong>${escapeHtml(card.actionLabel)}</strong> · Confidence ${card.confidence} · ${escapeHtml(card.finality)}</p>`,
+    `<p><span class="action-badge ${actionClass}">${escapeHtml(card.actionLabel)}</span> · Confidence ${formatPercent(card.confidence)} · ${escapeHtml(card.finality)}</p>`,
     "<p>Decision-support only. Review Required conditions and conflicting evidence must be checked in detail.</p>",
-    `<p>Entry ${card.tradeTimingPlan.entryZone.low} - ${card.tradeTimingPlan.entryZone.high} · Stop ${card.tradeTimingPlan.stopLevel} · Target ${card.tradeTimingPlan.targetZone.low} - ${card.tradeTimingPlan.targetZone.high}</p>`,
+    `<p>Entry ${formatPriceRange(card.tradeTimingPlan.entryZone)} · Stop ${formatPrice(card.tradeTimingPlan.stopLevel)} · Target ${formatPriceRange(card.tradeTimingPlan.targetZone)}</p>`,
     `<p>Screening Evidence: ${escapeHtml(card.screeningEvidenceQuality ? card.screeningEvidenceQuality : "not applicable")}</p>`,
-    `<p>AI contribution: ${card.aiContribution} · AI Weight Haircut: ${card.aiWeightHaircut}</p>`,
+    `<p>AI contribution: ${formatPercent(card.aiContribution)} · AI Weight Haircut: ${formatPercent(card.aiWeightHaircut)}</p>`,
     ...card.rankingBreakdown.map((line) => `<p>${escapeHtml(line)}</p>`),
     card.portfolioStateMessage ? `<p>${escapeHtml(card.portfolioStateMessage)}</p>` : "",
     `<a href="${escapeHtml(card.detailHref)}">Open research detail</a>`,
@@ -1520,7 +1836,10 @@ describe("Research Detail", () => {
 
     expect(html).toContain("Signal Brief");
     expect(html).toContain("Trade Timing");
+    expect(html).toContain("command-bar");
+    expect(html).toContain("fixed-summary");
     expect(html).toContain("Report tabs");
+    expect(html).toContain("segmented-tabs");
     expect(html).toContain("Evidence Panel");
     expect(html).toContain("Technical Report Panel");
     expect(html).toContain("AI Context Report Panel");
@@ -1535,6 +1854,9 @@ describe("Research Detail", () => {
     const html = renderResearchDetailPage(buildResearchDetail("US:XNAS:NVDA"));
 
     expect(html).toContain("BUY");
+    expect(html).toContain("action-badge action-buy");
+    expect(html).toContain("Confidence 88%");
+    expect(html).toContain("Entry Zone: 118 - 124");
     expect(html).toContain("Decision-support only");
     expect(html).toContain("Review Required conditions");
     expect(html).toContain("High volatility requires disciplined entry and stop monitoring.");
@@ -1573,6 +1895,7 @@ Create `apps/web/src/modules/research-detail.ts`:
 ```typescript
 import type { InstrumentId, QualityFlag } from "../domain/market";
 import type { ActionLabel, EvidenceSource, TradeTimingPlan } from "../domain/signals";
+import { formatPercent, formatPrice, formatPriceRange } from "./formatters";
 import { buildResearchChartSuite, type ResearchChartSuite } from "./research-chart-models";
 
 export type ResearchDetailViewModel = {
@@ -1645,9 +1968,9 @@ export function buildResearchDetail(
 export function renderResearchDetailPage(detail: ResearchDetailViewModel): string {
   return [
     '<article class="research-detail">',
-    `<header><p>${escapeHtml(detail.instrumentId)}</p><h1>${escapeHtml(detail.displayName)} Research Detail</h1></header>`,
+    `<header class="terminal-header"><p>${escapeHtml(detail.instrumentId)}</p><h1>${escapeHtml(detail.displayName)} Research Detail</h1></header>`,
     fixedSummary(detail),
-    '<section aria-label="Report tabs"><h2>Report tabs</h2>',
+    '<section class="report-tabs" aria-label="Report tabs"><h2>Report tabs</h2><nav class="segmented-tabs" aria-label="Research Report Panels"><span class="tab-chip">Evidence</span><span class="tab-chip">Technical</span><span class="tab-chip">AI Context</span><span class="tab-chip">Portfolio</span><span class="tab-chip">Backtest</span><span class="tab-chip">Risk</span><span class="tab-chip">Audit</span></nav>',
     panel("Evidence Panel", [
       ...detail.evidence.map((source) => `${source.sourceType}: ${source.title}`),
       ...detail.conflictingEvidence,
@@ -1670,22 +1993,30 @@ export function renderResearchDetailPage(detail: ResearchDetailViewModel): strin
 }
 
 function fixedSummary(detail: ResearchDetailViewModel): string {
+  const actionClass = detail.actionLabel === "BUY" ? "action-buy" : detail.actionLabel === "HOLD" ? "action-hold" : detail.actionLabel === "SELL" ? "action-sell" : "action-review";
   return [
     '<section class="fixed-summary">',
+    '<div class="command-bar">',
+    `<span>${escapeHtml(detail.instrumentId)}</span>`,
+    `<span class="action-badge ${actionClass}">${escapeHtml(detail.actionLabel)}</span>`,
+    `<span>Confidence ${formatPercent(detail.confidence)}</span>`,
+    `<span>${escapeHtml(detail.finality)}</span>`,
+    "<span>Review Required conditions visible</span>",
+    "</div>",
     "<h2>Signal Brief</h2>",
-    `<p><strong>${escapeHtml(detail.actionLabel)}</strong> · Confidence ${detail.confidence} · ${detail.finality}</p>`,
+    `<p><strong>${escapeHtml(detail.actionLabel)}</strong> · Confidence ${formatPercent(detail.confidence)} · ${detail.finality}</p>`,
     "<p>Decision-support only. Review Required conditions and conflicting evidence must be checked before external use.</p>",
     `<p>${detail.rationale.map(escapeHtml).join(" ")}</p>`,
     "<h2>Trade Timing</h2>",
-    `<p>Entry Zone: ${detail.tradeTimingPlan.entryZone.low} - ${detail.tradeTimingPlan.entryZone.high}</p>`,
-    `<p>Stop Level: ${detail.tradeTimingPlan.stopLevel}</p>`,
-    `<p>Target Zone: ${detail.tradeTimingPlan.targetZone.low} - ${detail.tradeTimingPlan.targetZone.high}</p>`,
+    `<p>Entry Zone: ${formatPriceRange(detail.tradeTimingPlan.entryZone)}</p>`,
+    `<p>Stop Level: ${formatPrice(detail.tradeTimingPlan.stopLevel)}</p>`,
+    `<p>Target Zone: ${formatPriceRange(detail.tradeTimingPlan.targetZone)}</p>`,
     "</section>",
   ].join("");
 }
 
 function panel(title: string, rows: string[]): string {
-  return [`<section><h3>${escapeHtml(title)}</h3>`, ...rows.map((row) => `<p>${escapeHtml(row)}</p>`), "</section>"].join("");
+  return [`<section class="report-panel"><h3>${escapeHtml(title)}</h3>`, ...rows.map((row) => `<p>${escapeHtml(row)}</p>`), "</section>"].join("");
 }
 
 function timing(

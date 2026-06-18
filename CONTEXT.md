@@ -48,6 +48,10 @@ _Avoid_: Strategy editor, live performance
 A professional user's operating area that owns watchlists, strategy profiles, portfolios, research notes, and optional client reports.
 _Avoid_: Account, tenant
 
+**Professional Research Terminal**:
+A dense dark interface style for reviewing signals, evidence, charts, and report panels with the visual tone of professional market software.
+_Avoid_: Generic SaaS dashboard, consumer finance app
+
 **Portfolio**:
 A typed collection of holdings inside a workspace, representing a personal, client, or model portfolio.
 _Avoid_: Watchlist, research note
