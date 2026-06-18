@@ -32,6 +32,25 @@ class EvidenceSourceRequest(BaseModel):
     finality: Finality
 
 
+class AIContextScoreRequest(BaseModel):
+    catalyst_score: float = Field(ge=0, le=1)
+    uncertainty_score: float = Field(ge=0, le=1)
+    evidence_quality_score: float = Field(ge=0, le=1)
+    freshness_score: float = Field(ge=0, le=1)
+    contradiction_count: int = Field(ge=0)
+    source_count: int = Field(ge=0)
+
+    def to_domain(self) -> AIContextScore:
+        return AIContextScore(
+            catalyst_score=self.catalyst_score,
+            uncertainty_score=self.uncertainty_score,
+            evidence_quality_score=self.evidence_quality_score,
+            freshness_score=self.freshness_score,
+            contradiction_count=self.contradiction_count,
+            source_count=self.source_count,
+        )
+
+
 class AnalysisRunRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -40,7 +59,7 @@ class AnalysisRunRequest(BaseModel):
     )
     finality: Finality
     bars: list[dict[str, float | str]]
-    ai_context: dict[str, float | int] = Field(
+    ai_context: AIContextScoreRequest = Field(
         validation_alias=AliasChoices("ai_context", "aiContext")
     )
     source_evidence: list[EvidenceSourceRequest] = Field(
@@ -71,14 +90,7 @@ def run_analysis(request: AnalysisRunRequest) -> dict[str, object]:
         bars=request.bars,
         finality=request.finality,
     )
-    ai_context = AIContextScore(
-        catalyst_score=float(request.ai_context["catalyst_score"]),
-        uncertainty_score=float(request.ai_context["uncertainty_score"]),
-        evidence_quality_score=float(request.ai_context["evidence_quality_score"]),
-        freshness_score=float(request.ai_context["freshness_score"]),
-        contradiction_count=int(request.ai_context["contradiction_count"]),
-        source_count=int(request.ai_context["source_count"]),
-    )
+    ai_context = request.ai_context.to_domain()
     decision = create_signal_decision(
         feature_set=feature_set,
         ai_context=ai_context,

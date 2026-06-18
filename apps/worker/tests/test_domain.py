@@ -1,6 +1,7 @@
 import pytest
 
 from worker.domain import (
+    AIContextScore,
     EvidenceSource,
     InstrumentId,
     SignalDecision,
@@ -53,6 +54,18 @@ def test_default_strategy_profile_weights() -> None:
     assert profile.ai_weight == 0.4
     assert profile.min_ai_weight == 0.2
     assert profile.max_ai_weight == 0.6
+
+
+def test_ai_context_score_rejects_out_of_range_direct_construction() -> None:
+    with pytest.raises(ValueError, match="catalyst_score must be between 0 and 1"):
+        AIContextScore(
+            catalyst_score=10,
+            uncertainty_score=0.2,
+            evidence_quality_score=0.9,
+            freshness_score=0.9,
+            contradiction_count=0,
+            source_count=3,
+        )
 
 
 def test_signal_decision_represents_source_evidence() -> None:

@@ -488,7 +488,7 @@ def test_analysis_run_request_accepts_task_4_camel_case_payload_with_source_evid
     )
 
     assert request.instrument_id == "US:XNAS:AAPL"
-    assert request.ai_context["source_count"] == 3
+    assert request.ai_context.source_count == 3
     assert [evidence.source_id for evidence in request.source_evidence] == [
         "news-1",
         "news-2",
@@ -580,3 +580,27 @@ def test_analysis_run_route_rejects_missing_id_source_without_url_title_fallback
 
     assert status_code in {400, 422}
     assert "Source evidence without source_id requires URL and title" in str(body)
+
+
+def test_analysis_run_route_rejects_out_of_range_ai_context_score() -> None:
+    payload = analysis_run_camel_payload()
+    ai_context = dict(payload["aiContext"])  # type: ignore[arg-type]
+    ai_context["catalyst_score"] = 10
+    payload["aiContext"] = ai_context
+
+    status_code, body = post_json("/analysis/run", payload)
+
+    assert status_code in {400, 422}
+    assert "catalyst_score" in str(body)
+
+
+def test_analysis_run_route_rejects_missing_ai_context_source_count_as_client_error() -> None:
+    payload = analysis_run_camel_payload()
+    ai_context = dict(payload["aiContext"])  # type: ignore[arg-type]
+    ai_context.pop("source_count")
+    payload["aiContext"] = ai_context
+
+    status_code, body = post_json("/analysis/run", payload)
+
+    assert status_code in {400, 422}
+    assert "source_count" in str(body)

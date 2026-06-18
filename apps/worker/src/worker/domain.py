@@ -5,6 +5,8 @@ fields, such as tradeTimingPlan, in later tasks.
 """
 
 from dataclasses import dataclass
+from math import isfinite
+from numbers import Integral, Real
 import re
 from typing import Literal
 
@@ -95,6 +97,27 @@ class AIContextScore:
     freshness_score: float
     contradiction_count: int
     source_count: int
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "catalyst_score",
+            "uncertainty_score",
+            "evidence_quality_score",
+            "freshness_score",
+        ):
+            value = getattr(self, field_name)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Real)
+                or not isfinite(float(value))
+                or not 0 <= float(value) <= 1
+            ):
+                raise ValueError(f"{field_name} must be between 0 and 1")
+
+        for field_name in ("contradiction_count", "source_count"):
+            value = getattr(self, field_name)
+            if isinstance(value, bool) or not isinstance(value, Integral) or value < 0:
+                raise ValueError(f"{field_name} must be greater than or equal to 0")
 
 
 @dataclass(frozen=True)
