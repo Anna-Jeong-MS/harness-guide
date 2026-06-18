@@ -12,9 +12,9 @@ from worker.signal_decision import create_signal_decision
 from pydantic import ValidationError
 
 
-def source_evidence_payload() -> dict[str, str]:
+def source_evidence_payload(source_id: str = "news-1") -> dict[str, str]:
     return {
-        "source_id": "news-1",
+        "source_id": source_id,
         "source_type": "news",
         "title": "AAPL catalyst coverage",
         "url": "https://example.com/aapl-news",
@@ -23,8 +23,8 @@ def source_evidence_payload() -> dict[str, str]:
     }
 
 
-def source_evidence() -> EvidenceSource:
-    return EvidenceSource(**source_evidence_payload())  # type: ignore[arg-type]
+def source_evidence(source_id: str = "news-1") -> EvidenceSource:
+    return EvidenceSource(**source_evidence_payload(source_id))  # type: ignore[arg-type]
 
 
 def test_ai_weight_haircut_reduces_weak_evidence() -> None:
@@ -68,7 +68,7 @@ def test_create_buy_signal_decision_with_trade_timing_plan() -> None:
         feature_set=feature_set,
         ai_context=ai_context,
         profile=StrategyProfile.default_swing_momentum(),
-        source_evidence=(source_evidence(),),
+        source_evidence=(source_evidence("news-1"), source_evidence("news-2")),
     )
 
     assert decision.trade_timing_plan.action_label == "BUY"
@@ -79,6 +79,39 @@ def test_create_buy_signal_decision_with_trade_timing_plan() -> None:
     assert decision.trade_timing_plan.target_high == 116.0
     assert decision.ai_weight_haircut == 0
     assert decision.finality == "confirmed"
+
+
+def test_create_signal_decision_haircuts_when_displayed_source_evidence_is_insufficient() -> None:
+    instrument_id = InstrumentId.parse("US:XNAS:AAPL")
+    feature_set = FeatureSet(
+        instrument_id=instrument_id,
+        close=100,
+        moving_average_20=105,
+        moving_average_50=95,
+        rsi_14=58,
+        volume_surge_ratio=1.4,
+        volatility_20=0.08,
+        finality="confirmed",
+    )
+    ai_context = AIContextScore(
+        catalyst_score=0.7,
+        uncertainty_score=0.2,
+        evidence_quality_score=0.9,
+        freshness_score=0.9,
+        contradiction_count=0,
+        source_count=3,
+    )
+
+    decision = create_signal_decision(
+        feature_set=feature_set,
+        ai_context=ai_context,
+        profile=StrategyProfile.default_swing_momentum(),
+        source_evidence=(source_evidence(),),
+    )
+
+    assert decision.ai_weight_haircut == 0.25
+    assert decision.ai_contribution == 0.075
+    assert "weak_ai_source_evidence" in decision.quality_flags
 
 
 def test_create_signal_decision_rejects_ai_context_without_source_evidence() -> None:
@@ -168,7 +201,10 @@ def test_analysis_run_route_returns_signal_decision_payload() -> None:
                 "contradiction_count": 0,
                 "source_count": 3,
             },
-            source_evidence=[source_evidence_payload()],
+            source_evidence=[
+                source_evidence_payload("news-1"),
+                source_evidence_payload("news-2"),
+            ],
         )
     )
 
@@ -182,7 +218,15 @@ def test_analysis_run_route_returns_signal_decision_payload() -> None:
             "url": "https://example.com/aapl-news",
             "observedAt": "2026-06-18T00:00:00.000Z",
             "finality": "confirmed",
-        }
+        },
+        {
+            "sourceId": "news-2",
+            "sourceType": "news",
+            "title": "AAPL catalyst coverage",
+            "url": "https://example.com/aapl-news",
+            "observedAt": "2026-06-18T00:00:00.000Z",
+            "finality": "confirmed",
+        },
     ]
     assert body["tradeTimingPlan"]["actionLabel"] == "BUY"
     assert body["tradeTimingPlan"]["entryZone"]["low"] == 155.82
@@ -205,3 +249,23 @@ def test_analysis_run_request_rejects_invalid_finality() -> None:
             },
             source_evidence=[],
         )
+
+
+def test_analysis_run_request_accepts_camel_case_instrument_id_and_ai_context() -> None:
+    request = AnalysisRunRequest(
+        instrumentId="US:XNAS:AAPL",
+        finality="confirmed",
+        bars=[],
+        aiContext={
+            "catalyst_score": 0.7,
+            "uncertainty_score": 0.2,
+            "evidence_quality_score": 0.9,
+            "freshness_score": 0.9,
+            "contradiction_count": 0,
+            "source_count": 3,
+        },
+        source_evidence=[],
+    )
+
+    assert request.instrument_id == "US:XNAS:AAPL"
+    assert request.ai_context["source_count"] == 3

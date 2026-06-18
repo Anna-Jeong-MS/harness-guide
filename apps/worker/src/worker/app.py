@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from worker.domain import (
     AIContextScore,
@@ -16,20 +16,33 @@ app = FastAPI()
 
 
 class EvidenceSourceRequest(BaseModel):
-    source_id: str
-    source_type: EvidenceSourceType
+    model_config = ConfigDict(populate_by_name=True)
+
+    source_id: str = Field(validation_alias=AliasChoices("source_id", "sourceId"))
+    source_type: EvidenceSourceType = Field(
+        validation_alias=AliasChoices("source_type", "sourceType")
+    )
     title: str
     url: str
-    observed_at: str
+    observed_at: str = Field(validation_alias=AliasChoices("observed_at", "observedAt"))
     finality: Finality
 
 
 class AnalysisRunRequest(BaseModel):
-    instrument_id: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    instrument_id: str = Field(
+        validation_alias=AliasChoices("instrument_id", "instrumentId")
+    )
     finality: Finality
     bars: list[dict[str, float | str]]
-    ai_context: dict[str, float | int]
-    source_evidence: list[EvidenceSourceRequest] = Field(default_factory=list)
+    ai_context: dict[str, float | int] = Field(
+        validation_alias=AliasChoices("ai_context", "aiContext")
+    )
+    source_evidence: list[EvidenceSourceRequest] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("source_evidence", "sourceEvidence"),
+    )
 
 
 @app.post("/analysis/run")

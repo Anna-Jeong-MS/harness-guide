@@ -15,7 +15,11 @@ def create_signal_decision(
     profile: StrategyProfile,
     source_evidence: tuple[EvidenceSource, ...] = (),
 ) -> SignalDecision:
-    adjusted_ai_weight = apply_ai_weight_haircut(profile, ai_context)
+    adjusted_ai_weight = apply_ai_weight_haircut(
+        profile,
+        ai_context,
+        displayed_source_count=len(source_evidence),
+    )
     ai_weight_haircut = round(profile.ai_weight - adjusted_ai_weight, 4)
     ai_raw_score = ai_context.catalyst_score - ai_context.uncertainty_score
     if round(ai_raw_score * adjusted_ai_weight, 4) != 0 and not source_evidence:
