@@ -6,6 +6,7 @@ from worker.domain import (
     SignalDecision,
     StrategyProfile,
     TradeTimingPlan,
+    distinct_source_evidence_count,
 )
 
 
@@ -18,7 +19,7 @@ def create_signal_decision(
     adjusted_ai_weight = apply_ai_weight_haircut(
         profile,
         ai_context,
-        displayed_source_count=len(source_evidence),
+        displayed_source_count=distinct_source_evidence_count(source_evidence),
     )
     ai_weight_haircut = round(profile.ai_weight - adjusted_ai_weight, 4)
     ai_raw_score = ai_context.catalyst_score - ai_context.uncertainty_score

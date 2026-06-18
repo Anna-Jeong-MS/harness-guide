@@ -213,6 +213,120 @@ def test_create_signal_decision_haircuts_when_displayed_source_evidence_is_insuf
     assert "weak_ai_source_evidence" in decision.quality_flags
 
 
+def test_create_signal_decision_haircuts_duplicate_source_evidence() -> None:
+    instrument_id = InstrumentId.parse("US:XNAS:AAPL")
+    feature_set = FeatureSet(
+        instrument_id=instrument_id,
+        close=100,
+        moving_average_20=105,
+        moving_average_50=95,
+        rsi_14=58,
+        volume_surge_ratio=1.4,
+        volatility_20=0.08,
+        finality="confirmed",
+    )
+    ai_context = AIContextScore(
+        catalyst_score=0.7,
+        uncertainty_score=0.2,
+        evidence_quality_score=0.9,
+        freshness_score=0.9,
+        contradiction_count=0,
+        source_count=3,
+    )
+
+    decision = create_signal_decision(
+        feature_set=feature_set,
+        ai_context=ai_context,
+        profile=StrategyProfile.default_swing_momentum(),
+        source_evidence=(source_evidence("news-1"), source_evidence("news-1")),
+    )
+
+    assert decision.ai_weight_haircut == 0.25
+    assert decision.ai_contribution == 0.075
+    assert "weak_ai_source_evidence" in decision.quality_flags
+
+
+def test_create_signal_decision_haircuts_sources_without_ids_by_url_title() -> None:
+    instrument_id = InstrumentId.parse("US:XNAS:AAPL")
+    feature_set = FeatureSet(
+        instrument_id=instrument_id,
+        close=100,
+        moving_average_20=105,
+        moving_average_50=95,
+        rsi_14=58,
+        volume_surge_ratio=1.4,
+        volatility_20=0.08,
+        finality="confirmed",
+    )
+    ai_context = AIContextScore(
+        catalyst_score=0.7,
+        uncertainty_score=0.2,
+        evidence_quality_score=0.9,
+        freshness_score=0.9,
+        contradiction_count=0,
+        source_count=3,
+    )
+
+    decision = create_signal_decision(
+        feature_set=feature_set,
+        ai_context=ai_context,
+        profile=StrategyProfile.default_swing_momentum(),
+        source_evidence=(source_evidence(""), source_evidence("")),
+    )
+
+    assert decision.ai_weight_haircut == 0.25
+    assert "weak_ai_source_evidence" in decision.quality_flags
+
+
+def test_create_signal_decision_haircuts_sources_without_valid_fallback_identity() -> None:
+    instrument_id = InstrumentId.parse("US:XNAS:AAPL")
+    feature_set = FeatureSet(
+        instrument_id=instrument_id,
+        close=100,
+        moving_average_20=105,
+        moving_average_50=95,
+        rsi_14=58,
+        volume_surge_ratio=1.4,
+        volatility_20=0.08,
+        finality="confirmed",
+    )
+    ai_context = AIContextScore(
+        catalyst_score=0.7,
+        uncertainty_score=0.2,
+        evidence_quality_score=0.9,
+        freshness_score=0.9,
+        contradiction_count=0,
+        source_count=3,
+    )
+
+    decision = create_signal_decision(
+        feature_set=feature_set,
+        ai_context=ai_context,
+        profile=StrategyProfile.default_swing_momentum(),
+        source_evidence=(
+            EvidenceSource(
+                source_id="",
+                source_type="news",
+                title="AAPL catalyst coverage",
+                url="",
+                observed_at="2026-06-18T00:00:00.000Z",
+                finality="confirmed",
+            ),
+            EvidenceSource(
+                source_id="",
+                source_type="news",
+                title="AAPL catalyst follow-up",
+                url="",
+                observed_at="2026-06-18T00:00:00.000Z",
+                finality="confirmed",
+            ),
+        ),
+    )
+
+    assert decision.ai_weight_haircut == 0.25
+    assert "weak_ai_source_evidence" in decision.quality_flags
+
+
 def test_create_signal_decision_rejects_ai_context_without_source_evidence() -> None:
     instrument_id = InstrumentId.parse("US:XNAS:AAPL")
     feature_set = FeatureSet(
@@ -408,3 +522,61 @@ def test_analysis_run_route_rejects_empty_source_evidence_as_client_error() -> N
     )
 
     assert status_code in {400, 422}
+
+
+def test_analysis_run_route_rejects_duplicate_source_evidence_as_client_error() -> None:
+    status_code, body = post_json(
+        "/analysis/run",
+        analysis_run_camel_payload(
+            source_evidence=[
+                source_evidence_camel_payload("news-1"),
+                source_evidence_camel_payload("news-1"),
+            ],
+        ),
+    )
+
+    assert status_code in {400, 422}
+    assert "Duplicate source evidence" in str(body)
+
+
+def test_analysis_run_route_rejects_duplicate_fallback_source_evidence_as_client_error() -> None:
+    status_code, body = post_json(
+        "/analysis/run",
+        analysis_run_camel_payload(
+            source_evidence=[
+                source_evidence_camel_payload(""),
+                source_evidence_camel_payload(""),
+            ],
+        ),
+    )
+
+    assert status_code in {400, 422}
+    assert "Duplicate source evidence" in str(body)
+
+
+def test_analysis_run_route_rejects_duplicate_missing_id_source_evidence_as_client_error() -> None:
+    first_source = source_evidence_camel_payload("news-1")
+    second_source = source_evidence_camel_payload("news-2")
+    first_source.pop("sourceId")
+    second_source.pop("sourceId")
+
+    status_code, body = post_json(
+        "/analysis/run",
+        analysis_run_camel_payload(source_evidence=[first_source, second_source]),
+    )
+
+    assert status_code in {400, 422}
+    assert "Duplicate source evidence" in str(body)
+
+
+def test_analysis_run_route_rejects_missing_id_source_without_url_title_fallback() -> None:
+    source = source_evidence_camel_payload("")
+    source["url"] = ""
+
+    status_code, body = post_json(
+        "/analysis/run",
+        analysis_run_camel_payload(source_evidence=[source]),
+    )
+
+    assert status_code in {400, 422}
+    assert "Source evidence without source_id requires URL and title" in str(body)

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from worker.domain import (
     AIContextScore,
@@ -8,6 +8,7 @@ from worker.domain import (
     Finality,
     InstrumentId,
     StrategyProfile,
+    canonical_source_evidence_key,
 )
 from worker.features import build_feature_set
 from worker.signal_decision import create_signal_decision
@@ -18,7 +19,10 @@ app = FastAPI()
 class EvidenceSourceRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    source_id: str = Field(validation_alias=AliasChoices("source_id", "sourceId"))
+    source_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("source_id", "sourceId"),
+    )
     source_type: EvidenceSourceType = Field(
         validation_alias=AliasChoices("source_type", "sourceType")
     )
@@ -43,6 +47,20 @@ class AnalysisRunRequest(BaseModel):
         min_length=1,
         validation_alias=AliasChoices("source_evidence", "sourceEvidence"),
     )
+
+    @model_validator(mode="after")
+    def reject_duplicate_source_evidence(self) -> "AnalysisRunRequest":
+        seen: set[tuple[str, str]] = set()
+        for evidence in self.source_evidence:
+            key = canonical_source_evidence_key(evidence)
+            if key is None:
+                raise ValueError(
+                    "Source evidence without source_id requires URL and title"
+                )
+            if key in seen:
+                raise ValueError("Duplicate source evidence is not allowed")
+            seen.add(key)
+        return self
 
 
 @app.post("/analysis/run")

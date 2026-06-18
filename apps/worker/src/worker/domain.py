@@ -5,6 +5,7 @@ fields, such as tradeTimingPlan, in later tasks.
 """
 
 from dataclasses import dataclass
+import re
 from typing import Literal
 
 
@@ -129,3 +130,29 @@ class SignalDecision:
     source_evidence: tuple[EvidenceSource, ...]
     trade_timing_plan: TradeTimingPlan
     rationale: tuple[str, ...]
+
+
+def canonical_source_evidence_key(source: object) -> tuple[str, str] | None:
+    source_id = str(getattr(source, "source_id", "") or "").strip()
+    if source_id:
+        return ("source_id", source_id)
+
+    url = str(getattr(source, "url", "") or "").strip().rstrip("/").casefold()
+    title = re.sub(
+        r"\s+",
+        " ",
+        str(getattr(source, "title", "") or "").strip(),
+    ).casefold()
+    if not url or not title:
+        return None
+    return ("url_title", f"{url}|{title}")
+
+
+def distinct_source_evidence_count(sources: tuple[object, ...] | list[object]) -> int:
+    return len(
+        {
+            key
+            for source in sources
+            if (key := canonical_source_evidence_key(source)) is not None
+        }
+    )

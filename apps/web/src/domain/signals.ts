@@ -17,7 +17,7 @@ export type TradeTimingPlan = {
 };
 
 export type EvidenceSource = {
-  sourceId: string;
+  sourceId?: string;
   sourceType: "price" | "disclosure" | "news" | "filing" | "research";
   title: string;
   url: string;

@@ -91,4 +91,16 @@ describe("domain language", () => {
     expect(decision.sourceEvidence).toHaveLength(1);
     expect(decision.sourceEvidence[0].sourceType).toBe("disclosure");
   });
+
+  it("allows source evidence to fall back to URL and title when sourceId is absent", () => {
+    const source: SignalDecision["sourceEvidence"][number] = {
+      sourceType: "news",
+      title: "Samsung Electronics coverage",
+      url: "https://example.com/samsung-news",
+      observedAt: "2026-06-18T00:00:00.000Z",
+      finality: "confirmed",
+    };
+
+    expect(source.title).toBe("Samsung Electronics coverage");
+  });
 });
