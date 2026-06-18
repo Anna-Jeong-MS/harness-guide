@@ -23,6 +23,7 @@ describe("Research Detail", () => {
 
   it("pairs strong Action Labels with decision-support copy and risk evidence", () => {
     const html = renderResearchDetailPage(buildResearchDetail("US:XNAS:NVDA"));
+    const signalBrief = sectionBetween(html, "<h2>Signal Brief</h2>", "<h2>Trade Timing</h2>");
 
     expect(html).toContain("BUY");
     expect(html).toContain("action-badge action-buy");
@@ -30,7 +31,29 @@ describe("Research Detail", () => {
     expect(html).toContain("Entry Zone: 118 - 124");
     expect(html).toContain("Decision-support only");
     expect(html).toContain("Review Required conditions");
-    expect(html).toContain("High volatility requires disciplined entry and stop monitoring.");
+    expect(signalBrief).toContain("High volatility requires disciplined entry and stop monitoring.");
+  });
+
+  it("formats AI contribution and haircut as percentages in the AI Context Report Panel", () => {
+    const html = renderResearchDetailPage(buildResearchDetail("US:XNAS:NVDA"));
+    const aiContextPanel = sectionBetween(html, "AI Context Report Panel", "Portfolio Impact Report Panel");
+
+    expect(aiContextPanel).toContain("AI contribution: 42%");
+    expect(aiContextPanel).toContain("AI Weight Haircut: 6%");
+    expect(aiContextPanel).not.toContain("0.42");
+    expect(aiContextPanel).not.toContain("0.06");
+  });
+
+  it("renders the primary chart after Trade Timing and before report tabs", () => {
+    const html = renderResearchDetailPage(buildResearchDetail("US:XNAS:NVDA"));
+    const tradeTimingIndex = html.indexOf("<h2>Trade Timing</h2>");
+    const primaryChartIndex = html.indexOf('class="primary-chart-panel"');
+    const reportTabsIndex = html.indexOf('class="report-tabs"');
+
+    expect(primaryChartIndex).toBeGreaterThan(tradeTimingIndex);
+    expect(primaryChartIndex).toBeLessThan(reportTabsIndex);
+    expect(sectionBetween(html, 'class="primary-chart-panel"', 'class="report-tabs"')).toContain("Price and Volume");
+    expect(sectionBetween(html, 'class="primary-chart-panel"', 'class="report-tabs"')).toContain("chart-scroll");
   });
 
   it("marks Portfolio Impact unavailable without making portfolio claims", () => {
@@ -58,6 +81,16 @@ describe("Research Detail", () => {
       reason: "Portfolio unavailable; portfolio-specific claims are not shown.",
     });
   });
+
+  function sectionBetween(html: string, start: string, end: string): string {
+    const startIndex = html.indexOf(start);
+    const endIndex = html.indexOf(end, startIndex + start.length);
+
+    expect(startIndex).toBeGreaterThanOrEqual(0);
+    expect(endIndex).toBeGreaterThan(startIndex);
+
+    return html.slice(startIndex, endIndex);
+  }
 
   it("does not default unsupported instruments to NVIDIA BUY research", () => {
     const detail = buildResearchDetail("KR:XKRX:005930");

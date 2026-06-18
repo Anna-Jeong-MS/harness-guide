@@ -1,7 +1,7 @@
 import type { InstrumentId, QualityFlag } from "../domain/market";
 import type { ActionLabel, EvidenceSource, TradeTimingPlan } from "../domain/signals";
 import { formatPercent, formatPrice, formatPriceRange } from "./formatters";
-import { buildResearchChartSuite, type ResearchChartSuite } from "./research-chart-models";
+import { buildResearchChartSuite, type ChartPanel, type ResearchChartSuite } from "./research-chart-models";
 
 export type ResearchDetailViewModel = {
   instrumentId: InstrumentId;
@@ -127,13 +127,17 @@ export function renderResearchDetailPage(detail: ResearchDetailViewModel): strin
     '<article class="research-detail">',
     `<header class="terminal-header"><p>${escapeHtml(detail.instrumentId)}</p><h1>${escapeHtml(detail.displayName)} Research Detail</h1></header>`,
     fixedSummary(detail),
+    primaryChartPanel(detail.charts.priceVolume),
     '<section class="report-tabs" aria-label="Report tabs"><h2>Report tabs</h2><nav class="segmented-tabs" aria-label="Research Report Panels"><span class="tab-chip">Evidence</span><span class="tab-chip">Technical</span><span class="tab-chip">AI Context</span><span class="tab-chip">Portfolio</span><span class="tab-chip">Backtest</span><span class="tab-chip">Risk</span><span class="tab-chip">Audit</span></nav>',
     panel("Evidence Panel", [
       ...detail.evidence.map((source) => `${source.sourceType}: ${source.title}`),
       ...detail.conflictingEvidence,
     ]),
     panel("Technical Report Panel", ["Recharts technical indicators are rendered from chart-ready models."]),
-    panel("AI Context Report Panel", [`AI contribution: ${detail.aiContribution}`, `AI Weight Haircut: ${detail.aiWeightHaircut}`]),
+    panel("AI Context Report Panel", [
+      `AI contribution: ${formatPercent(detail.aiContribution)}`,
+      `AI Weight Haircut: ${formatPercent(detail.aiWeightHaircut)}`,
+    ]),
     panel("Portfolio Impact Report Panel", [detail.portfolioImpact]),
     panel(
       "Backtest Report Panel",
@@ -175,10 +179,44 @@ function fixedSummary(detail: ResearchDetailViewModel): string {
     `<p><strong>${escapeHtml(detail.actionLabel)}</strong> · Confidence ${formatPercent(detail.confidence)} · ${detail.finality}</p>`,
     "<p>Decision-support only. Review Required conditions and conflicting evidence must be checked before external use.</p>",
     `<p>${detail.rationale.map(escapeHtml).join(" ")}</p>`,
+    `<p>Risk evidence: ${detail.conflictingEvidence.map(escapeHtml).join(" ")}</p>`,
     "<h2>Trade Timing</h2>",
     `<p>Entry Zone: ${formatPriceRange(detail.tradeTimingPlan.entryZone)}</p>`,
     `<p>Stop Level: ${formatPrice(detail.tradeTimingPlan.stopLevel)}</p>`,
     `<p>Target Zone: ${formatPriceRange(detail.tradeTimingPlan.targetZone)}</p>`,
+    "</section>",
+  ].join("");
+}
+
+function primaryChartPanel(
+  panel: ChartPanel<{
+    points: Array<{ date: string; close: number; volume: number }>;
+    entryZone: { low: number; high: number };
+    stopLevel: number;
+    targetZone: { low: number; high: number };
+  }>,
+): string {
+  if (panel.state === "unavailable") {
+    return [
+      '<section class="primary-chart-panel" aria-label="Primary chart">',
+      "<h2>Price and Volume</h2>",
+      `<p>${escapeHtml(panel.reason)}</p>`,
+      "</section>",
+    ].join("");
+  }
+
+  const latestPoint = panel.data.points.at(-1);
+  const latestClose = latestPoint ? formatPrice(latestPoint.close) : "Unavailable";
+
+  return [
+    '<section class="primary-chart-panel" aria-label="Primary chart">',
+    "<h2>Price and Volume</h2>",
+    '<div class="chart-scroll">',
+    `<p>Latest close: ${escapeHtml(latestClose)}</p>`,
+    `<p>Entry Zone: ${formatPriceRange(panel.data.entryZone)}</p>`,
+    `<p>Stop Level: ${formatPrice(panel.data.stopLevel)}</p>`,
+    `<p>Target Zone: ${formatPriceRange(panel.data.targetZone)}</p>`,
+    "</div>",
     "</section>",
   ].join("");
 }
