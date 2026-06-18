@@ -81,4 +81,46 @@ describe("PortfolioInterpretationModule", () => {
     expect(action.label).toBe("REVIEW_REQUIRED");
     expect(action.riskFlags).toContain("weak_ai_source_evidence");
   });
+
+  it("preserves overweight REVIEW_REQUIRED signals with concentration and quality risk flags", () => {
+    const reviewRequiredDecision: SignalDecision = {
+      ...buyDecision,
+      qualityFlags: ["weak_ai_source_evidence", "conflicting_news_or_disclosures"],
+      tradeTimingPlan: {
+        ...buyDecision.tradeTimingPlan,
+        actionLabel: "REVIEW_REQUIRED",
+      },
+    };
+    const portfolio: Portfolio = {
+      id: "portfolio-1",
+      workspaceId: "workspace-1",
+      type: "personal",
+      name: "Main",
+      holdings: [
+        {
+          instrumentId: "US:XNAS:AAPL",
+          quantity: 100,
+          averageEntryPrice: 80,
+          marketValue: 60_000,
+        },
+        {
+          instrumentId: "US:XNAS:MSFT",
+          quantity: 100,
+          averageEntryPrice: 200,
+          marketValue: 40_000,
+        },
+      ],
+    };
+
+    const action = interpretForPortfolio({
+      signalDecision: reviewRequiredDecision,
+      portfolio,
+      maxPositionWeight: 0.5,
+    });
+
+    expect(action.label).toBe("REVIEW_REQUIRED");
+    expect(action.riskFlags).toContain("high_portfolio_concentration");
+    expect(action.riskFlags).toContain("weak_ai_source_evidence");
+    expect(action.riskFlags).toContain("conflicting_news_or_disclosures");
+  });
 });

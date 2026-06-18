@@ -22,8 +22,24 @@ export function interpretForPortfolio(input: {
   );
   const currentWeight =
     holding && totalMarketValue > 0 ? holding.marketValue / totalMarketValue : 0;
+  const isOverweight = currentWeight > input.maxPositionWeight;
 
-  if (currentWeight > input.maxPositionWeight) {
+  if (input.signalDecision.tradeTimingPlan.actionLabel === "REVIEW_REQUIRED") {
+    return {
+      label: "REVIEW_REQUIRED",
+      riskFlags: isOverweight
+        ? appendRiskFlag(
+            input.signalDecision.qualityFlags,
+            "high_portfolio_concentration",
+          )
+        : input.signalDecision.qualityFlags,
+      explanation: isOverweight
+        ? "Signal quality requires professional Portfolio review, and the position is overweight."
+        : "Signal quality requires professional Portfolio review.",
+    };
+  }
+
+  if (isOverweight) {
     return {
       label: "TRIM_CANDIDATE",
       riskFlags: ["high_portfolio_concentration"],
@@ -56,17 +72,13 @@ export function interpretForPortfolio(input: {
     };
   }
 
-  if (input.signalDecision.tradeTimingPlan.actionLabel === "REVIEW_REQUIRED") {
-    return {
-      label: "REVIEW_REQUIRED",
-      riskFlags: input.signalDecision.qualityFlags,
-      explanation: "Signal quality requires professional Portfolio review.",
-    };
-  }
-
   return {
     label: "HOLD_AND_MONITOR",
     riskFlags: [],
     explanation: "Signal does not require an immediate Portfolio change.",
   };
+}
+
+function appendRiskFlag(flags: QualityFlag[], flag: QualityFlag): QualityFlag[] {
+  return flags.includes(flag) ? flags : [...flags, flag];
 }
