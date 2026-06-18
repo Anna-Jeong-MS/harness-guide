@@ -154,6 +154,12 @@ a {
     padding: 18px;
   }
 
+  .fixed-summary {
+    position: sticky;
+    top: 12px;
+    z-index: 4;
+  }
+
   .command-bar {
     align-items: flex-start;
     flex-direction: column;
