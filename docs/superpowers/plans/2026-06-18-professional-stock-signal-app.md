@@ -2904,7 +2904,13 @@ rg "placeOrder|cancelOrder|modifyOrder|executeOrder" apps
 Expected:
 
 ```text
-No matches found
+No runtime source matches found; tests may assert these methods are absent.
+```
+
+For an implementation-only check, run:
+
+```bash
+! rg "placeOrder|cancelOrder|modifyOrder|executeOrder" apps/web/src apps/web/app apps/worker/src
 ```
 
 - [ ] **Step 3: Verify required documents still exist**

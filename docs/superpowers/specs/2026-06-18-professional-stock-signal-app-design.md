@@ -33,6 +33,10 @@ The product is a professional decision-support system, not an automatic investme
 - Read-only broker connection for holdings and balances.
 - PDF export with Markdown/HTML preview for approved report outputs.
 
+### Implemented MVP Baseline
+
+The current MVP implementation includes canonical instrument validation, market data provider adapters, a Python analysis worker, signal persistence, portfolio interpretation with read-only broker import, backtests, alert events, Research Notes, approved Client Report PDF export, and a professional dashboard vertical slice. The implementation preserves the out-of-scope boundary for automated order execution.
+
 ### Out of Scope for MVP
 
 - Automated order execution.
