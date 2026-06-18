@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: stock-signal-worker
+Version: 0.1.0
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn>=0.32.0
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: pydantic>=2.9.0
+Provides-Extra: test
+Requires-Dist: pytest>=8.3.0; extra == "test"

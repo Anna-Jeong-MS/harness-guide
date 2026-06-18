@@ -1,0 +1,13 @@
+{
+  "name": "professional-stock-signal-app",
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix apps/web test",
+    "test:web": "npm --prefix apps/web test",
+    "test:worker": "cd apps/worker && pytest",
+    "dev": "docker compose up --build"
+  },
+  "workspaces": [
+    "apps/web"
+  ]
+}
