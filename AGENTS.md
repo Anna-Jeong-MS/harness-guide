@@ -18,7 +18,9 @@ If a path does not exist yet, note that and continue. Do not invent missing deci
 
 - Use the required skill workflow, but do not let a skill run from memory alone.
 - When a skill asks for project context, load the documents above before making project decisions.
-- When Superpowers and Matt Pocock skills both apply, use Superpowers for process flow and Matt Pocock skills for domain language, module design, grilling, and architectural judgment.
+- **Every decision gate is run with Matt Pocock grilling / human interaction first.** The human is the protagonist at each stage. Use Matt Pocock skills (grill-with-docs, grilling, domain-modeling, codebase-design) to drive alignment, naming, and module design through interview.
+- **Superpowers provides the stage skeleton and opt-in automation only.** Subagent-driven execution and automated verification (subagent-driven-development, executing-plans, requesting-code-review, verification-before-completion) are NOT the default. Use them only when the human explicitly opts in, and treat their output as a *proposal*: bring automated review/verification results back to the human via grilling and get confirmation before proceeding.
+- Parallel worktree development (using-git-worktrees) is opt-in; never auto-merge worktree results — the human converges them via grilling before integration.
 - If a document conflicts with the current user instruction, ask or resolve the conflict explicitly before changing code or plans.
 
 ## Keeping Documents Current
