@@ -102,7 +102,7 @@
 | 단계 | 목적 | 사람 게이트 (grilling 주도) | 옵트인 자동화 (Superpowers, 보조) |
 |------|------|------------------------------|-----------------------------------|
 | **0. 셋업** | 프로젝트 1회 준비 | `domain-modeling`로 `CONTEXT.md` 시작 | `using-superpowers`, 필요 시 `using-git-worktrees` |
-| **1. 정렬** | 무엇을 만들지 합의 | **`grill-with-docs`**(설계를 끝까지 추궁 + 용어집/ADR 작성) | `brainstorming`(접근법 발산, 설계안 제안) |
+| **1. 정렬** | 무엇을 만들지 합의 | **`grill-with-docs`**(설계를 끝까지 추궁 + 용어집/ADR 작성) — **최소 2–3회 반복**하여 충분히 수렴한 뒤 다음으로 넘어간다 | `brainstorming`(접근법 발산, 설계안 제안) |
 | **2. 모듈 설계** | 어떻게 잘 만들지 | `codebase-design`(작은 인터페이스·깊은 구현·깨끗한 seam) + `domain-modeling`(결정 기록) | — |
 | **3. 계획** | 실행 가능한 작업으로 분해 | `writing-plans` 초안을 grilling으로 검토·확정 | `writing-plans`(파일·인터페이스 명시한 TDD 계획 초안 생성) |
 | **4. 구현** | 코드 작성 | `tdd`/`test-driven-development`로 계획 문서를 읽고 슬라이스마다 red-green-refactor를 사람이 확인 / *프론트엔드면* `frontend-design`+`design-taste-frontend` 생성 결과를 사람이 검토 | `executing-plans`(한 세션 배치) 또는 `subagent-driven-development`(서브에이전트 병렬+task별 리뷰, 무거움) |
@@ -131,6 +131,9 @@
    `brainstorming`으로 옵션을 펼쳐 *제안*을 받은 뒤, **주역인 `grill-with-docs`로 사람이
    설계를 끝까지 추궁**한다. 여기서 만든 `CONTEXT.md`는 이후 모든 단계의 토큰을 아끼고
    명명을 일관되게 만든다.
+   > ⚠️ **`grill-with-docs`는 1회로 끝내지 않는다.** 한 번 grilling 후 brainstorming으로
+   > 넘어가면 발산에 빠지기 쉽다. **최소 2–3회 반복**해서 설계 결정이 충분히 수렴된 뒤
+   > brainstorming(보조 발산)이나 다음 단계로 넘어간다.
 2. **계획 전에 모듈 경계를 정한다.** `codebase-design` 어휘(module/interface/seam/depth)로
    "작은 인터페이스 뒤에 많은 동작"을 추구하면 테스트 가능성이 따라온다.
 3. **세로 슬라이스로만 만든다.** 테스트 전부 먼저(가로 슬라이스) 금지.
@@ -169,6 +172,8 @@
 
 ```text
 1) /grill-with-docs 로 사람이 설계를 추궁·검증하고 CONTEXT.md·ADR을 만든다 (주역)
+   ⚠️ 1회로 끝내지 않는다 — 최소 2–3회 반복하여 설계가 충분히 수렴된 후 다음으로 넘어간다.
+   (1회만 하면 brainstorming으로 넘어가며 발산에 빠지기 쉽다)
    · (선택 보조) /brainstorming 으로 옵션을 펼쳐 설계안 후보를 받을 수 있다
 2) /codebase-design + /domain-modeling 으로 모듈 경계를 사람과 합의한다
 3) /writing-plans 로 docs/superpowers/plans/에 자기완결 TDD 계획을 만들고 grilling으로 확정한다
