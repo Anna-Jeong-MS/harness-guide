@@ -164,16 +164,19 @@
 
 ## 빠른 시작
 
-골격은 Superpowers, **매 단계의 주인은 사람(grilling)**, 자동화는 옵트인 보조다.
+설계는 사람(Matt 스킬)이 주도하고, Superpowers 자동화는 옵트인 보조다.
+`using-superpowers`는 스킬을 찾아 쓰는 상시 라우터일 뿐, 별도 단계가 아니다.
 
 ```text
-1) /using-superpowers 로 흐름(골격)을 잡는다
-2) /brainstorming 으로 아이디어를 설계안으로 펼친다 (보조: 옵션 제안)
-3) /grill-with-docs 로 사람이 설계를 추궁·검증하고 CONTEXT.md·ADR을 만든다 (주역)
-4) /codebase-design 으로 모듈 경계를 사람과 합의한다
-5) /writing-plans 로 TDD 계획 초안을 만들고 grilling으로 확정한다
-6) (옵트인) /subagent-driven-development(또는 /executing-plans)로 병렬 구현 —
-   병렬 작업은 /using-git-worktrees 로 격리하고, 결과는 사람이 grilling으로 수렴한다
-7) /requesting-code-review·/verification-before-completion(자동 제안)을 돌린 뒤
+1) /grill-with-docs 로 사람이 설계를 추궁·검증하고 CONTEXT.md·ADR을 만든다 (주역)
+   · (선택 보조) /brainstorming 으로 옵션을 펼쳐 설계안 후보를 받을 수 있다
+2) /codebase-design + /domain-modeling 으로 모듈 경계를 사람과 합의한다
+3) /writing-plans 로 docs/superpowers/plans/에 자기완결 TDD 계획을 만들고 grilling으로 확정한다
+4) /tdd 로 그 계획 문서를 읽어 단계별로 직접 구현 — 인터페이스·테스트할 행동을 사람과 확인하고
+   세로 슬라이스(한 테스트→한 구현) red-green-refactor (기본/주역)
+   · (옵트인 자동화) 한 세션 배치는 /executing-plans, 독립 task가 많고 자동 리뷰를 원하면
+     /subagent-driven-development(서브에이전트 병렬+task별 리뷰, 무겁고 느림),
+     병렬 격리는 /using-git-worktrees — 결과는 grilling으로 사람이 수렴한다
+5) /requesting-code-review·/verification-before-completion(자동 제안)을 돌린 뒤
    결과를 사람이 확인하고 /finishing-a-development-branch 로 마무리한다
 ```

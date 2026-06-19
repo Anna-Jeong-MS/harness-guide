@@ -34,5 +34,6 @@ If a path does not exist yet, note that and continue. Do not invent missing deci
 
 - Do not implement from an idea alone when an approved spec or plan exists.
 - Prefer the newest relevant spec and plan; if multiple documents apply, state which one governs the work.
+- **Default implementation is direct, human-driven `tdd`/`test-driven-development`:** read the newest plan in `docs/superpowers/plans/` (self-contained — exact file paths + failing-test code) and implement step-by-step in vertical slices (one test → one implementation), confirming interface and behaviors with the human. The `tdd` skill itself only loads `CONTEXT.md`/ADRs, so **reading the plan document is wired here** — always load the governing plan before implementing. `executing-plans` (in-session batch) and `subagent-driven-development` (parallel subagents with per-task review — heavier/slower) are opt-in automation, not the default.
 - Keep implementation aligned with the glossary and ADRs. Do not introduce alternate names for established domain concepts.
 - If implementation reveals that a spec, plan, ADR, or glossary entry is wrong, update the document in the same change set as the code or stop and ask for direction.
