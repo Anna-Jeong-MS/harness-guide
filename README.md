@@ -57,9 +57,9 @@
 | `finishing-a-development-branch` | 머지 / PR / 정리로 작업 마무리 |
 
 > **의존성 메모.** `tdd`와 `improve-codebase-architecture`는 `codebase-design`·`grilling`·
-> `domain-modeling`을, `writing-plans`의 실행 단계는 `subagent-driven-development`·
-> `executing-plans`(및 `test-driven-development`·`finishing-a-development-branch` 등)을
-> 참조한다. 이 저장소에는 그 **참조 스킬이 모두 함께 설치**되어 끊긴 의존성이 없다.
+> `domain-modeling`을 참조한다. `writing-plans`가 만든 계획은 기본적으로 `tdd`가 직접
+> 읽어 세로 슬라이스로 구현하고, `executing-plans`·`subagent-driven-development`는
+> 옵트인 실행 자동화다. 이 저장소에는 그 **참조 스킬이 모두 함께 설치**되어 끊긴 의존성이 없다.
 
 ### 프론트엔드 / UX (생성 → 테이스트 → 정제)
 프론트엔드 작업은 **생성 → 테이스트 → 정제** 세 층으로 나뉜다. `frontend-design`이
@@ -105,7 +105,7 @@
 | **1. 정렬** | 무엇을 만들지 합의 | **`grill-with-docs`**(설계를 끝까지 추궁 + 용어집/ADR 작성) | `brainstorming`(접근법 발산, 설계안 제안) |
 | **2. 모듈 설계** | 어떻게 잘 만들지 | `codebase-design`(작은 인터페이스·깊은 구현·깨끗한 seam) + `domain-modeling`(결정 기록) | — |
 | **3. 계획** | 실행 가능한 작업으로 분해 | `writing-plans` 초안을 grilling으로 검토·확정 | `writing-plans`(파일·인터페이스 명시한 TDD 계획 초안 생성) |
-| **4. 구현** | 코드 작성 | `tdd`/`test-driven-development`로 슬라이스마다 red-green-refactor를 사람이 확인 / *프론트엔드면* `frontend-design`+`design-taste-frontend` 생성 결과를 사람이 검토 | `subagent-driven-development`/`executing-plans`로 계획 병렬 실행(옵트인) |
+| **4. 구현** | 코드 작성 | `tdd`/`test-driven-development`로 계획 문서를 읽고 슬라이스마다 red-green-refactor를 사람이 확인 / *프론트엔드면* `frontend-design`+`design-taste-frontend` 생성 결과를 사람이 검토 | `executing-plans`(한 세션 배치) 또는 `subagent-driven-development`(서브에이전트 병렬+task별 리뷰, 무거움) |
 | **5. 디버깅** | 막히면 | `systematic-debugging` 가설을 사람과 합의 | — |
 | **6. 리뷰·검증** | 품질 게이트 | 자동 리뷰/검증 결과를 grilling으로 사람에게 확인받은 뒤 진행 / *프론트엔드면* `baseline-ui`·`fixing-accessibility`·`fixing-motion-performance`로 정제 | `requesting-code-review` + `verification-before-completion`(자동 제안) |
 | **7. 출시** | 통합/배포 | 사람이 통합 결정 | `finishing-a-development-branch` (머지·PR·정리) |
